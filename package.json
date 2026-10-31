@@ -1,0 +1,28 @@
+{
+  "name": "brightloop-subscription-management",
+  "version": "1.0.0",
+  "description": "Production-grade Subscription Management System for Brightloop Software",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "node server/server.js",
+    "start": "node server/server.js",
+    "prisma:generate": "npx prisma generate",
+    "prisma:push": "npx prisma db push",
+    "prisma:seed": "node server/seed.js",
+    "setup": "npm run prisma:generate && npm run prisma:push && npm run prisma:seed"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0"
+  }
+}

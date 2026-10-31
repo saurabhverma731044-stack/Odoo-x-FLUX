@@ -1,0 +1,247 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                  String               @id @default(uuid())
+  email               String               @unique
+  passwordHash        String
+  role                String               @default("CUSTOMER") // ADMIN, STAFF, CUSTOMER
+  customerId          String?              @unique
+  customer            Customer?            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  passwordResetTokens PasswordResetToken[]
+  auditLogs           AuditLog[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Customer {
+  id            String         @id @default(uuid())
+  name          String
+  email         String         @unique
+  phone         String?
+  city          String?
+  address       String?
+  user          User?
+  subscriptions Subscription[]
+  invoices      Invoice[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Product {
+  id            String                  @id @default(uuid())
+  name          String
+  type          String                  @default("SERVICE") // SERVICE, GOOD
+  salesPrice    Float
+  costPrice     Float                   @default(0)
+  notes         String?
+  variants      ProductVariant[]
+  plans         Plan[]
+  subLines      SubscriptionLine[]
+  invLines      InvoiceLine[]
+  templateLines QuotationTemplateLine[]
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+}
+
+model ProductVariant {
+  id             String                  @id @default(uuid())
+  productId      String
+  product        Product                 @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attributeName  String
+  attributeValue String
+  priceExtra     Float                   @default(0)
+  plans          Plan[]
+  subLines       SubscriptionLine[]
+  templateLines  QuotationTemplateLine[]
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+}
+
+model Plan {
+  id            String              @id @default(uuid())
+  name          String
+  productId     String
+  product       Product             @relation(fields: [productId], references: [id])
+  variantId     String?
+  variant       ProductVariant?     @relation(fields: [variantId], references: [id])
+  price         Float
+  billingPeriod String              @default("Monthly") // Daily, Weekly, Monthly, Yearly
+  minQuantity   Int                 @default(1)
+  availableFrom DateTime?
+  availableTo   DateTime?
+  autoClose     Boolean             @default(false)
+  closableEarly Boolean             @default(true)
+  pausable      Boolean             @default(true)
+  renewable     Boolean             @default(true)
+  subscriptions Subscription[]
+  templates     QuotationTemplate[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model QuotationTemplate {
+  id           String                  @id @default(uuid())
+  name         String
+  planId       String?
+  plan         Plan?                   @relation(fields: [planId], references: [id])
+  validityDays Int                     @default(30)
+  lines        QuotationTemplateLine[]
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+}
+
+model QuotationTemplateLine {
+  id         String          @id @default(uuid())
+  templateId String
+  template   QuotationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product         @relation(fields: [productId], references: [id])
+  variantId  String?
+  variant    ProductVariant? @relation(fields: [variantId], references: [id])
+  quantity   Int             @default(1)
+  unitPrice  Float
+}
+
+model Tax {
+  id        String             @id @default(uuid())
+  name      String
+  rate      Float              // e.g. 0.18
+  appliesTo String             @default("ALL")
+  isActive  Boolean            @default(true)
+  subLines  SubscriptionLine[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+model Discount {
+  id              String   @id @default(uuid())
+  code            String   @unique
+  type            String   // Fixed or Percentage
+  value           Float
+  minPurchase     Float?
+  minQuantity     Int?     @default(1)
+  startDate       DateTime
+  endDate         DateTime
+  usageLimit      Int      @default(100)
+  usedCount       Int      @default(0)
+  appliesTo       String   @default("All subscriptions")
+  targetProductId String?
+  targetPlanId    String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Subscription {
+  id                 String             @id @default(uuid())
+  subscriptionNumber String             @unique // SUB-1001
+  customerId         String
+  customer           Customer           @relation(fields: [customerId], references: [id])
+  planId             String
+  plan               Plan               @relation(fields: [planId], references: [id])
+  status             String             @default("Draft") // Draft, Quotation, Confirmed, Active, Paused, Closed, Cancelled
+  startDate          DateTime
+  expiryDate         DateTime
+  nextBillingDate    DateTime
+  paymentTerms       String             @default("Net 15")
+  autoClose          Boolean            @default(false)
+  lines              SubscriptionLine[]
+  invoices           Invoice[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+}
+
+model SubscriptionLine {
+  id             String          @id @default(uuid())
+  subscriptionId String
+  subscription   Subscription    @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product         @relation(fields: [productId], references: [id])
+  variantId      String?
+  variant        ProductVariant? @relation(fields: [variantId], references: [id])
+  quantity       Int             @default(1)
+  unitPrice      Float
+  taxId          String?
+  tax            Tax?            @relation(fields: [taxId], references: [id])
+  taxAmount      Float           @default(0)
+  amount         Float
+}
+
+model Invoice {
+  id                 String        @id @default(uuid())
+  invoiceNumber      String        @unique // e.g. INV-202611-1001
+  subscriptionId     String
+  subscription       Subscription  @relation(fields: [subscriptionId], references: [id])
+  customerId         String
+  customer           Customer      @relation(fields: [customerId], references: [id])
+  billingPeriodStart DateTime
+  billingPeriodEnd   DateTime
+  dueDate            DateTime
+  subtotal           Float
+  discountAmount     Float         @default(0)
+  discountCode       String?
+  taxAmount          Float
+  totalAmount        Float
+  paidAmount         Float         @default(0)
+  status             String        @default("Confirmed") // Draft, Confirmed, Paid, Cancelled, Overdue
+  sentAt             DateTime?
+  lines              InvoiceLine[]
+  payments           Payment[]
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@unique([subscriptionId, billingPeriodStart])
+}
+
+model InvoiceLine {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id])
+  description String
+  quantity    Int      @default(1)
+  unitPrice   Float
+  taxAmount   Float    @default(0)
+  totalAmount Float
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  paymentNumber String   @unique
+  invoiceId     String
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id])
+  method        String   @default("UPI") // UPI, Bank transfer, Card, Cash
+  amount        Float
+  paymentDate   DateTime @default(now())
+  note          String?
+  createdAt     DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  entityType String   // Subscription, Invoice, Discount, Auth
+  entityId   String
+  action     String   // STATUS_CHANGE, BILLING_RUN, PAYMENT_RECORDED, etc.
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  details    String   // JSON string
+  createdAt  DateTime @default(now())
+}
