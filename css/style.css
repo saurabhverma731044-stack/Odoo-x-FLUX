@@ -7,7 +7,7 @@ a{color:var(--teal)}[hidden]{display:none!important}
 button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 input,select{width:100%;background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px 11px;font:inherit;margin-top:4px}
 label{display:block;margin:12px 0;color:var(--mut);font-size:13px}
-.auth{min-height:100vh;display:grid;place-items:center;padding:20px}
+.auth{min-height:100vh;display:grid;place-items:center;padding:21px}
 .auth-card{width:100%;max-width:384px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px}
 .auth-card h1{margin:0 0 4px;color:var(--teal)}
 .app{display:grid;grid-template-columns:64px 220px 1fr;min-height:100vh}
