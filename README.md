@@ -1,5 +1,6 @@
 # SubSync — Subscription Management Dashboard
 
+
 A modern subscription management platform built for the **Odoo × FLUX Hackathon**. SubSync helps businesses manage customers, subscriptions, and payment records through a centralized dashboard powered by Next.js and Supabase.
 
 ## 🚀 Project Overview
