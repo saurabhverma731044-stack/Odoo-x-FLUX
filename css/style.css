@@ -8,14 +8,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{ou
 input,select{width:100%;background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px 11px;font:inherit;margin-top:4px}
 label{display:block;margin:12px 0;color:var(--mut);font-size:13px}
 .auth{min-height:100vh;display:grid;place-items:center;padding:20px}
-.auth-card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px}
+.auth-card{width:100%;max-width:384px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px}
 .auth-card h1{margin:0 0 4px;color:var(--teal)}
 .app{display:grid;grid-template-columns:64px 220px 1fr;min-height:100vh}
 .rail{background:#0a0f14;display:flex;flex-direction:column;align-items:center;gap:22px;padding-top:24px}
 .rail span{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;color:var(--mut);font-size:17px;cursor:pointer}
 .rail span.on{background:var(--card);color:var(--teal)}
-.side{background:var(--panel);padding:20px 14px}
-.logo{font-weight:700;font-size:18px;color:var(--teal);padding:4px 10px 18px}
+.side{background:var(--panel);padding:22px 15px}
+.logo{font-weight:705;font-size:18px;color:var(--teal);padding:4px 10px 18px}
 .side a{display:flex;gap:10px;align-items:center;padding:10px 12px;margin-bottom:4px;border-radius:10px;color:var(--mut);text-decoration:none}
 .side a:hover{color:var(--text)}.side a.on{background:var(--teal);color:#06211d;font-weight:600}
 .main{padding:22px 26px;min-width:0}

@@ -27,12 +27,14 @@ const DB = {
     {code:'FLAT500',type:'Fixed',value:500,minQty:1,from:'2026-10-01',to:'2026-11-30',limit:20,used:1,applies:'All subscriptions'}],
   invoices: [], payments: []
 };
+
 const plan = id => DB.plans.find(p => p.id === id), cust = id => DB.customers.find(c => c.id === id);
 function discountFor(sub){
   const base = plan(sub.plan).price * sub.qty;
   const d = DB.discounts.find(d => d.to >= TODAY && d.from <= TODAY && d.used < d.limit && sub.qty >= d.minQty && (d.applies==='All subscriptions' || plan(sub.plan).name+' plan'===d.applies));
   return d ? {code:d.code, amt: d.type==='Percentage' ? base*d.value/100 : d.value} : {code:'',amt:0};
 }
+
 function buildInvoice(sub, period){
   const p = plan(sub.plan), base = p.price*sub.qty, d = discountFor(sub);
   const net = base - d.amt, tax = Math.round(net*TAX), due = new Date(period+'-15');
