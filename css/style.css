@@ -11,7 +11,7 @@ label{display:block;margin:12px 0;color:var(--mut);font-size:13px}
 .auth-card{width:100%;max-width:384px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px}
 .auth-card h1{margin:0 0 4px;color:var(--teal)}
 .app{display:grid;grid-template-columns:64px 220px 1fr;min-height:100vh}
-.rail{background:#0a0f14;display:flex;flex-direction:column;align-items:center;gap:22px;padding-top:24px}
+.rail{background:#0a0f14;display:flex;flex-direction:column;align-items:center;gap:20px;padding-top:24px}
 .rail span{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;color:var(--mut);font-size:17px;cursor:pointer}
 .rail span.on{background:var(--card);color:var(--teal)}
 .side{background:var(--panel);padding:22px 15px}
