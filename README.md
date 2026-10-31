@@ -5,3 +5,6 @@ Open `index.html` in a browser (no build step). Demo: any email + any password, 
 - `js/app.js` – auth, role-based nav, dashboard, subscriptions, plans, customers, invoices, payments, discounts, staff
 - `css/style.css` – dark teal theme
 
+
+
+
