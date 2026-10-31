@@ -3,7 +3,7 @@
 a{color:var(--teal)}[hidden]{display:none!important}
 .muted{color:var(--mut)}.small{font-size:12px}.err{color:var(--red);min-height:18px;margin:0}
 .btn{background:var(--teal);color:#06211d;border:0;border-radius:8px;padding:9px 16px;font:600 13px inherit;cursor:pointer}
-.btn:hover{filter:brightness(1.08)}.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}.btn.sm{padding:5px 10px;font-size:12px}
+.btn:hover{filter:brightness(1.08)}.btn.ghost{background:transparent;color:var(--text);border:2px solid var(--line)}.btn.sm{padding:5px 10px;font-size:12px}
 button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 input,select{width:100%;background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px 11px;font:inherit;margin-top:4px}
 label{display:block;margin:12px 0;color:var(--mut);font-size:13px}
