@@ -1,0 +1,16 @@
+▲ Next.js 16.4.3 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.56.1:3000
+✓ Ready in 2.5s
+✓ Running next.config.ts took 680ms
+
+○ Compiling /customers ...
+ GET /customers 200 in 2.2s (next.js: 1403ms, application-code: 798ms)
+ GET /customers 200 in 149ms (next.js: 3ms, application-code: 146ms)
+ GET /customers 200 in 157ms (next.js: 5ms, application-code: 152ms)
+ GET /customers 200 in 234ms (next.js: 4ms, application-code: 230ms)
+ GET /customers 200 in 127ms (next.js: 5ms, application-code: 122ms)
+ GET /customers/sign-in 200 in 329ms (next.js: 60ms, application-code: 269ms)
+ GET /customers/account 307 in 447ms (next.js: 58ms, application-code: 390ms)
+ GET /customers/team 307 in 259ms (next.js: 57ms, application-code: 202ms)
+[?25h

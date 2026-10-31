@@ -1,0 +1,12 @@
+node_modules/
+.next/
+out/
+build/
+.turbo/
+*.tsbuildinfo
+
+# Local JSON account store and mock mail outbox (development data only)
+data/
+
+.env*.local
+.DS_Store
