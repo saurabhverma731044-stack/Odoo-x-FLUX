@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 type Subscription = {
   id: string;
@@ -14,64 +14,23 @@ type Subscription = {
   nextBilling: string;
 };
 
-const subscriptions: Subscription[] = [
-  {
-    id: "SUB-1001",
-    customer: "Aarav Sharma",
-    email: "aarav@example.com",
-    plan: "Pro Monthly",
-    amount: 2499,
-    status: "Active",
-    nextBilling: "Nov 05, 2026",
-  },
-  {
-    id: "SUB-1002",
-    customer: "Meera Kapoor",
-    email: "meera@example.com",
-    plan: "Starter Monthly",
-    amount: 999,
-    status: "Pending",
-    nextBilling: "Nov 06, 2026",
-  },
-  {
-    id: "SUB-1003",
-    customer: "Rohan Verma",
-    email: "rohan@example.com",
-    plan: "Business Yearly",
-    amount: 24999,
-    status: "Overdue",
-    nextBilling: "Oct 28, 2026",
-  },
-  {
-    id: "SUB-1004",
-    customer: "Isha Singh",
-    email: "isha@example.com",
-    plan: "Pro Monthly",
-    amount: 2499,
-    status: "Active",
-    nextBilling: "Nov 12, 2026",
-  },
-  {
-    id: "SUB-1005",
-    customer: "Kabir Malhotra",
-    email: "kabir@example.com",
-    plan: "Starter Monthly",
-    amount: 999,
-    status: "Cancelled",
-    nextBilling: "—",
-  },
-];
+type Payment = {
+  id: number;
+  amount: number;
+  status: string;
+  payment_date: string;
+};
 
 const navigation = [
-  { icon: "▦", label: "Dashboard" },
-  { icon: "↻", label: "Subscriptions" },
-  { icon: "♙", label: "Customers" },
-  { icon: "▣", label: "Products" },
-  { icon: "▤", label: "Invoices" },
-  { icon: "▥", label: "Reports" },
+  { icon: "▦", label: "Dashboard", path: "/" },
+  { icon: "↻", label: "Subscriptions", path: "/subscriptions" },
+  { icon: "♙", label: "Customers", path: "/customers" },
+  { icon: "▣", label: "Payments", path: "/payments" },
+  { icon: "▤", label: "Products", path: "#" },
+  { icon: "▥", label: "Reports", path: "#" },
 ];
 
-const statusStyles: Record<Subscription["status"], string> = {
+const statusStyles: Record<string, string> = {
   Active: "bg-emerald-50 text-emerald-700",
   Pending: "bg-amber-50 text-amber-700",
   Overdue: "bg-rose-50 text-rose-700",
@@ -86,19 +45,108 @@ function formatCurrency(amount: number) {
   }).format(amount);
 }
 
+function formatDate(value: unknown) {
+  if (!value) return "—";
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function normalizeStatus(value: unknown): Subscription["status"] {
+  const status = String(value || "").toLowerCase();
+
+  if (status.includes("active")) return "Active";
+  if (status.includes("pending")) return "Pending";
+  if (status.includes("overdue")) return "Overdue";
+  if (status.includes("cancel")) return "Cancelled";
+
+  return "Pending";
+}
+
 export default function Home() {
   const router = useRouter();
-  const pathname = usePathname();
+
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [customerCount, setCustomerCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All statuses");
-  const [activeNav, setActiveNav] = useState("Dashboard");
+
+  useEffect(() => {
+    async function loadDashboard() {
+      setLoading(true);
+      setError("");
+
+      const [subscriptionResult, paymentResult, customerResult] =
+        await Promise.all([
+          supabase.from("subscriptions").select("*"),
+          supabase.from("payments").select("*"),
+          supabase.from("customers").select("id", { count: "exact" }),
+        ]);
+
+      if (subscriptionResult.error) {
+        setError(subscriptionResult.error.message);
+      } else {
+        const rows = subscriptionResult.data || [];
+
+        const mapped: Subscription[] = rows.map((row: any) => ({
+          id: String(row.id ?? "—"),
+          customer: String(
+            row.customer ?? row.customer_name ?? "Unknown customer"
+          ),
+          email: String(row.email ?? ""),
+          plan: String(row.plan ?? row.product ?? "Subscription"),
+          amount: Number(row.amount ?? 0),
+          status: normalizeStatus(row.status),
+          nextBilling: formatDate(
+            row.next_billing ?? row.nextBilling ?? row.next_payment_date
+          ),
+        }));
+
+        setSubscriptions(mapped);
+      }
+
+      if (paymentResult.error) {
+        setError((current) =>
+          current
+            ? `${current} | ${paymentResult.error.message}`
+            : paymentResult.error.message
+        );
+      } else {
+        setPayments((paymentResult.data || []) as Payment[]);
+      }
+
+      if (customerResult.error) {
+        setError((current) =>
+          current
+            ? `${current} | ${customerResult.error.message}`
+            : customerResult.error.message
+        );
+      } else {
+        setCustomerCount(customerResult.count ?? customerResult.data?.length ?? 0);
+      }
+
+      setLoading(false);
+    }
+
+    loadDashboard();
+  }, []);
 
   const filteredSubscriptions = useMemo(() => {
     return subscriptions.filter((subscription) => {
+      const text = search.toLowerCase();
+
       const matchesSearch =
-        subscription.customer.toLowerCase().includes(search.toLowerCase()) ||
-        subscription.id.toLowerCase().includes(search.toLowerCase()) ||
-        subscription.plan.toLowerCase().includes(search.toLowerCase());
+        subscription.customer.toLowerCase().includes(text) ||
+        subscription.id.toLowerCase().includes(text) ||
+        subscription.plan.toLowerCase().includes(text);
 
       const matchesStatus =
         statusFilter === "All statuses" ||
@@ -106,12 +154,61 @@ export default function Home() {
 
       return matchesSearch && matchesStatus;
     });
-  }, [search, statusFilter]);
+  }, [subscriptions, search, statusFilter]);
+
+  const activeCount = subscriptions.filter(
+    (item) => item.status === "Active"
+  ).length;
+
+  const overdueCount = subscriptions.filter(
+    (item) => item.status === "Overdue"
+  ).length;
+
+  const monthlyRevenue = payments
+    .filter((payment) => {
+      const date = new Date(payment.payment_date);
+      const now = new Date();
+
+      return (
+        payment.status === "Paid" &&
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear()
+      );
+    })
+    .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+
+  const outstanding = payments
+    .filter((payment) => payment.status === "Pending")
+    .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+
+  const monthlyChart = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date();
+    date.setDate(1);
+    date.setMonth(date.getMonth() - (5 - index));
+
+    const total = payments
+      .filter((payment) => {
+        const paymentDate = new Date(payment.payment_date);
+
+        return (
+          payment.status === "Paid" &&
+          paymentDate.getMonth() === date.getMonth() &&
+          paymentDate.getFullYear() === date.getFullYear()
+        );
+      })
+      .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+
+    return {
+      month: date.toLocaleDateString("en-IN", { month: "short" }),
+      total,
+    };
+  });
+
+  const maxRevenue = Math.max(...monthlyChart.map((item) => item.total), 1);
 
   return (
     <main className="min-h-screen bg-[#f6f8fc] text-slate-900">
       <div className="flex min-h-screen">
-        {/* Sidebar */}
         <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
           <div className="flex h-20 items-center gap-3 border-b border-slate-100 px-6">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-xl font-bold text-white">
@@ -119,7 +216,9 @@ export default function Home() {
             </div>
             <div>
               <h1 className="text-lg font-bold tracking-tight">SubSync</h1>
-              <p className="text-xs text-slate-400">Subscription management</p>
+              <p className="text-xs text-slate-400">
+                Subscription management
+              </p>
             </div>
           </div>
 
@@ -133,27 +232,18 @@ export default function Home() {
                 <button
                   key={item.label}
                   onClick={() => {
-  if (item.label === "Subscriptions") {
-    router.push("/subscriptions");
-  } else if (item.label === "Dashboard") {
-    router.push("/");
-  } else {
-    setActiveNav(item.label);
-  }
-}}
+                    if (item.path !== "#") router.push(item.path);
+                  }}
                   className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition ${
-                    activeNav === item.label
+                    item.label === "Dashboard"
                       ? "bg-indigo-50 text-indigo-700"
                       : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                   }`}
                 >
-                  <span className="w-5 text-center text-lg">{item.icon}</span>
+                  <span className="w-5 text-center text-lg">
+                    {item.icon}
+                  </span>
                   {item.label}
-                  {item.label === "Invoices" && (
-                    <span className="ml-auto rounded-full bg-rose-100 px-2 py-0.5 text-xs text-rose-600">
-                      4
-                    </span>
-                  )}
                 </button>
               ))}
             </nav>
@@ -174,16 +264,14 @@ export default function Home() {
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700">
                 SV
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">Saurabh Verma</p>
-                <p className="text-xs text-slate-400">Administrator</p>
+              <div>
+                <p className="text-sm font-semibold">Administrator</p>
+                <p className="text-xs text-slate-400">SubSync Workspace</p>
               </div>
-              <span className="ml-auto text-slate-400">⌄</span>
             </div>
           </div>
         </aside>
 
-        {/* Main content */}
         <section className="min-w-0 flex-1">
           <header className="flex h-20 items-center justify-between border-b border-slate-200 bg-white px-5 sm:px-8">
             <div>
@@ -191,120 +279,110 @@ export default function Home() {
               <h2 className="mt-1 text-xl font-bold">Dashboard</h2>
             </div>
 
-            <div className="flex items-center gap-3">
-              <button
-                aria-label="Notifications"
-                className="relative rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:bg-slate-50"
-              >
-                ♧
-                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500" />
-              </button>
-              <button className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">
-                + New subscription
-              </button>
-            </div>
+            <button
+              onClick={() => router.push("/subscriptions")}
+              className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+            >
+              + New subscription
+            </button>
           </header>
 
           <div className="space-y-7 p-5 sm:p-8">
-            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-              <div>
-                <h3 className="text-2xl font-bold tracking-tight">
-                  Welcome back, Saurabh 👋
-                </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  Here&apos;s what&apos;s happening with your business today.
-                </p>
-              </div>
-
-              <button className="w-fit rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
-                ▦ &nbsp; October 2026
-              </button>
+            <div>
+              <h3 className="text-2xl font-bold tracking-tight">
+                Welcome to SubSync 👋
+              </h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Your business overview, updated with Supabase data.
+              </p>
             </div>
 
-            {/* Summary cards */}
+            {error && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <SummaryCard
                 title="Active subscriptions"
-                value="1,248"
-                change="+12.8%"
-                description="vs. last month"
+                value={loading ? "..." : activeCount.toLocaleString("en-IN")}
+                description="From subscriptions"
                 icon="↻"
                 iconBg="bg-indigo-50 text-indigo-600"
               />
               <SummaryCard
                 title="Monthly revenue"
-                value="₹8,42,500"
-                change="+8.2%"
-                description="vs. last month"
+                value={loading ? "..." : formatCurrency(monthlyRevenue)}
+                description="Paid this month"
                 icon="₹"
                 iconBg="bg-emerald-50 text-emerald-600"
               />
               <SummaryCard
                 title="Outstanding amount"
-                value="₹1,24,800"
-                change="12 invoices"
-                description="awaiting payment"
+                value={loading ? "..." : formatCurrency(outstanding)}
+                description="Pending payments"
                 icon="◷"
                 iconBg="bg-amber-50 text-amber-600"
               />
               <SummaryCard
-                title="Overdue invoices"
-                value="18"
-                change="Needs attention"
-                description="payment overdue"
-                icon="!"
+                title="Customers"
+                value={loading ? "..." : customerCount.toLocaleString("en-IN")}
+                description={`${overdueCount} overdue subscriptions`}
+                icon="♙"
                 iconBg="bg-rose-50 text-rose-600"
               />
             </div>
 
-            {/* Revenue chart placeholder */}
             <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                <div>
-                  <h3 className="font-bold">Revenue overview</h3>
-                  <p className="mt-1 text-sm text-slate-400">
-                    Revenue collected over the last 6 months
-                  </p>
-                </div>
-                <span className="w-fit rounded-lg bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
-                  Last 6 months⌄
-                </span>
+              <div>
+                <h3 className="font-bold">Revenue overview</h3>
+                <p className="mt-1 text-sm text-slate-400">
+                  Paid payments over the last 6 months
+                </p>
               </div>
 
               <div className="mt-6 flex h-44 items-end gap-3 sm:gap-6">
-                {[
-                  { month: "May", height: "42%" },
-                  { month: "Jun", height: "58%" },
-                  { month: "Jul", height: "48%" },
-                  { month: "Aug", height: "76%" },
-                  { month: "Sep", height: "65%" },
-                  { month: "Oct", height: "92%" },
-                ].map((bar) => (
+                {monthlyChart.map((bar) => (
                   <div
                     key={bar.month}
                     className="flex h-full flex-1 flex-col items-center justify-end gap-2"
                   >
+                    <span className="text-[10px] text-slate-400">
+                      {bar.total > 0
+                        ? `₹${bar.total.toLocaleString("en-IN")}`
+                        : ""}
+                    </span>
                     <div
                       className="w-full max-w-16 rounded-t-lg bg-indigo-500 transition hover:bg-indigo-700"
-                      style={{ height: bar.height }}
+                      style={{
+                        height: `${Math.max(
+                          bar.total > 0 ? (bar.total / maxRevenue) * 75 : 3,
+                          3
+                        )}%`,
+                      }}
                     />
-                    <span className="text-xs text-slate-400">{bar.month}</span>
+                    <span className="text-xs text-slate-400">
+                      {bar.month}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Subscription table */}
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
               <div className="flex flex-col justify-between gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:p-6">
                 <div>
                   <h3 className="font-bold">Recent subscriptions</h3>
                   <p className="mt-1 text-sm text-slate-400">
-                    Manage and track your latest subscriptions
+                    Live records from your Supabase database
                   </p>
                 </div>
 
-                <button className="w-fit text-sm font-semibold text-indigo-600 hover:text-indigo-800">
+                <button
+                  onClick={() => router.push("/subscriptions")}
+                  className="w-fit text-sm font-semibold text-indigo-600 hover:text-indigo-800"
+                >
                   View all →
                 </button>
               </div>
@@ -339,74 +417,85 @@ export default function Home() {
                       <th className="px-6 py-3 font-semibold">Amount</th>
                       <th className="px-6 py-3 font-semibold">Next billing</th>
                       <th className="px-6 py-3 font-semibold">Status</th>
-                      <th className="px-6 py-3 font-semibold"> </th>
                     </tr>
                   </thead>
 
                   <tbody className="divide-y divide-slate-100">
-                    {filteredSubscriptions.map((subscription) => (
-                      <tr
-                        key={subscription.id}
-                        className="transition hover:bg-slate-50/70"
-                      >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-50 text-xs font-bold text-indigo-600">
-                              {subscription.customer
-                                .split(" ")
-                                .map((part) => part[0])
-                                .join("")}
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold">
-                                {subscription.customer}
-                              </p>
-                              <p className="mt-0.5 text-xs text-slate-400">
-                                {subscription.id}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-slate-600">
-                          {subscription.plan}
-                        </td>
-                        <td className="px-6 py-4 text-sm font-semibold">
-                          {formatCurrency(subscription.amount)}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-slate-500">
-                          {subscription.nextBilling}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${statusStyles[subscription.status]}`}
-                          >
-                            {subscription.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right text-slate-400">
-                          ···
-                        </td>
-                      </tr>
-                    ))}
-
-                    {filteredSubscriptions.length === 0 && (
+                    {loading ? (
                       <tr>
                         <td
-                          colSpan={6}
+                          colSpan={5}
                           className="px-6 py-10 text-center text-sm text-slate-400"
                         >
-                          No subscriptions match your search.
+                          Loading subscriptions...
                         </td>
                       </tr>
+                    ) : filteredSubscriptions.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-6 py-10 text-center text-sm text-slate-400"
+                        >
+                          No subscriptions found.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredSubscriptions.slice(0, 10).map((subscription) => (
+                        <tr
+                          key={subscription.id}
+                          className="transition hover:bg-slate-50/70"
+                        >
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-50 text-xs font-bold text-indigo-600">
+                                {subscription.customer
+                                  .split(" ")
+                                  .map((part) => part[0])
+                                  .join("")
+                                  .slice(0, 2)}
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold">
+                                  {subscription.customer}
+                                </p>
+                                <p className="mt-0.5 text-xs text-slate-400">
+                                  {subscription.id}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-600">
+                            {subscription.plan}
+                          </td>
+                          <td className="px-6 py-4 text-sm font-semibold">
+                            {formatCurrency(subscription.amount)}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-500">
+                            {subscription.nextBilling}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                                statusStyles[subscription.status]
+                              }`}
+                            >
+                              {subscription.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
                     )}
                   </tbody>
                 </table>
               </div>
 
               <div className="border-t border-slate-100 px-6 py-4 text-xs text-slate-400">
-                Showing {filteredSubscriptions.length} of{" "}
-                {subscriptions.length} demo subscriptions
+                Showing {filteredSubscriptions.length} matching subscriptions
               </div>
+            </div>
+
+            <div className="text-xs text-slate-400">
+              Total customers: {customerCount} · Total payments: {payments.length}
             </div>
           </div>
         </section>
@@ -418,14 +507,12 @@ export default function Home() {
 function SummaryCard({
   title,
   value,
-  change,
   description,
   icon,
   iconBg,
 }: {
   title: string;
   value: string;
-  change: string;
   description: string;
   icon: string;
   iconBg: string;
@@ -441,10 +528,7 @@ function SummaryCard({
         </div>
       </div>
       <p className="mt-4 text-2xl font-bold tracking-tight">{value}</p>
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-        <span className="font-semibold text-emerald-600">{change}</span>
-        <span className="text-slate-400">{description}</span>
-      </div>
+      <p className="mt-2 text-xs text-slate-400">{description}</p>
     </div>
   );
 }
