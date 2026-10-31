@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 
 type Subscription = {
   id: string;
@@ -85,6 +87,8 @@ function formatCurrency(amount: number) {
 }
 
 export default function Home() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All statuses");
   const [activeNav, setActiveNav] = useState("Dashboard");
@@ -128,7 +132,15 @@ export default function Home() {
               {navigation.map((item) => (
                 <button
                   key={item.label}
-                  onClick={() => setActiveNav(item.label)}
+                  onClick={() => {
+  if (item.label === "Subscriptions") {
+    router.push("/subscriptions");
+  } else if (item.label === "Dashboard") {
+    router.push("/");
+  } else {
+    setActiveNav(item.label);
+  }
+}}
                   className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition ${
                     activeNav === item.label
                       ? "bg-indigo-50 text-indigo-700"
